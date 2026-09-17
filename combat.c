@@ -36,7 +36,8 @@ void combat_render(const Combat *combat, const Player *player)
     printf("1. Quick Attack\n");
     printf("2. Heavy Attack\n");
     printf("3. Defend\n");
-    printf("4. Run\n\n");
+    printf("4. Inventory\n");
+    printf("5. Run\n\n");
 
     if (combat->player_decision == 1)
     {
@@ -51,6 +52,10 @@ void combat_render(const Combat *combat, const Player *player)
         printf("You decided: Defend\n");
     }
     else if (combat->player_decision == 4)
+    {
+        printf("You decided: Inventory\n");
+    }
+    else if (combat->player_decision == 5)
     {
         printf("You decided: Run\n");
     }
@@ -87,7 +92,8 @@ void combat_handle_input(
     if (input != '1' &&
         input != '2' &&
         input != '3' &&
-        input != '4')
+        input != '4' &&
+        input != '5')
     {
         return;
     }
@@ -102,7 +108,8 @@ void combat_handle_input(
         combat->player_decision = 1;
 
         // Player attacks
-        combat->player_damage_dealt = 2;
+        combat->player_damage_dealt =
+            player->weapons[player->current_weapon].damage;
 
         combat->enemy_hp -= combat->player_damage_dealt;
 
@@ -125,7 +132,16 @@ void combat_handle_input(
         // Enemy attacks
         combat->enemy_decision = 1;
 
-        int damage = 1;
+        int damage = 2;
+
+        // Armor negates damage
+        damage -=
+            player->armor[player->current_armor].damage_negation;
+
+        if (damage < 0)
+        {
+            damage = 0;
+        }
 
         if (combat->player_defending)
         {
@@ -162,7 +178,8 @@ void combat_handle_input(
         if (hit_chance < 70)
         {
             // Player attacks
-            combat->player_damage_dealt = 4;
+            combat->player_damage_dealt =
+                player->weapons[player->current_weapon].damage * 2;
 
             combat->enemy_hp -= combat->player_damage_dealt;
 
@@ -186,7 +203,16 @@ void combat_handle_input(
         // Enemy attacks
         combat->enemy_decision = 1;
 
-        int damage = 1;
+        int damage = 2;
+
+        // Armor negates damage
+        damage -=
+            player->armor[player->current_armor].damage_negation;
+
+        if (damage < 0)
+        {
+            damage = 0;
+        }
 
         if (combat->player_defending)
         {
@@ -221,7 +247,16 @@ void combat_handle_input(
         // Enemy attacks
         combat->enemy_decision = 1;
 
-        int damage = 1;
+        int damage = 2;
+
+        // Armor negates damage
+        damage -=
+            player->armor[player->current_armor].damage_negation;
+
+        if (damage < 0)
+        {
+            damage = 0;
+        }
 
         if (combat->player_defending)
         {
@@ -247,8 +282,16 @@ void combat_handle_input(
         }
     }
 
-    // Run
+    // Inventory
     else if (input == '4')
+    {
+        combat->player_decision = 4;
+
+        return;
+    }
+
+    // Run
+    else if (input == '5')
     {
         combat->active = 0;
 

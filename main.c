@@ -66,13 +66,21 @@ int main(void)
         // Combat screen
         if (combat.active)
         {
-            combat_render(&combat, &player);
+            if (inventory.active &&
+                inventory.mode == INVENTORY_COMBAT)
+            {
+                inventory_render(&inventory, &player);
+            }
+            else
+            {
+                combat_render(&combat, &player);
+            }
         }
 
         // Inventory screen
         else if (inventory.active)
         {
-            inventory_render(&player);
+            inventory_render(&inventory, &player);
         }
 
         // Normal map screen
@@ -109,7 +117,37 @@ int main(void)
         // Combat
         if (combat.active)
         {
-            combat_handle_input(&combat, &player, input);
+            if (inventory.active &&
+                inventory.mode == INVENTORY_COMBAT)
+            {
+                if (input == 'i' || input == 'I')
+                {
+                    inventory_close(&inventory);
+                }
+                else
+                {
+                    inventory_handle_input(
+                        &inventory,
+                        &player,
+                        input);
+                }
+            }
+            else
+            {
+                if (input == '4')
+                {
+                    inventory_open(
+                        &inventory,
+                        INVENTORY_COMBAT);
+                }
+                else
+                {
+                    combat_handle_input(
+                        &combat,
+                        &player,
+                        input);
+                }
+            }
 
             continue;
         }
@@ -133,6 +171,11 @@ int main(void)
         // Don't process other input while inventory is open
         if (inventory.active)
         {
+            inventory_handle_input(
+                &inventory,
+                &player,
+                input);
+
             continue;
         }
 
