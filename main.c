@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 
 #include "input.h"
 #include "map.h"
@@ -14,6 +16,7 @@ Inventory inventory;
 
 int main(void)
 {
+    srand(time(NULL)); // Seeding the RNG
     int current_room = 0;
 
     int help_screen = 0;

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "combat.h"
 
@@ -33,8 +34,9 @@ void combat_render(const Combat *combat, const Player *player)
            player->max_hp);
 
     printf("1. Quick Attack\n");
-    printf("2. Defend\n");
-    printf("3. Run\n\n");
+    printf("2. Heavy Attack\n");
+    printf("3. Defend\n");
+    printf("4. Run\n\n");
 
     if (combat->player_decision == 1)
     {
@@ -42,9 +44,13 @@ void combat_render(const Combat *combat, const Player *player)
     }
     else if (combat->player_decision == 2)
     {
-        printf("You decided: Defend\n");
+        printf("You decided: Heavy Attack\n");
     }
     else if (combat->player_decision == 3)
+    {
+        printf("You decided: Defend\n");
+    }
+    else if (combat->player_decision == 4)
     {
         printf("You decided: Run\n");
     }
@@ -63,7 +69,7 @@ void combat_render(const Combat *combat, const Player *player)
     }
 
     printf("You dealt %d damage.\n",
-        combat->player_damage_dealt);
+           combat->player_damage_dealt);
 
     if (combat->enemy_decision == 1)
     {
@@ -77,6 +83,15 @@ void combat_handle_input(
     Player *player,
     char input)
 {
+    // Ignore invalid input
+    if (input != '1' &&
+        input != '2' &&
+        input != '3' &&
+        input != '4')
+    {
+        return;
+    }
+
     // Reset turn results
     combat->player_damage_dealt = 0;
     combat->enemy_damage_dealt = 0;
@@ -136,10 +151,71 @@ void combat_handle_input(
         }
     }
 
-    // Defend
+    // Heavy Attack
     else if (input == '2')
     {
         combat->player_decision = 2;
+
+        // 70% chance to hit
+        int hit_chance = rand() % 100;
+
+        if (hit_chance < 70)
+        {
+            // Player attacks
+            combat->player_damage_dealt = 4;
+
+            combat->enemy_hp -= combat->player_damage_dealt;
+
+            // Check if enemy died
+            if (combat->enemy_hp <= 0)
+            {
+                combat->enemy_hp = 0;
+
+                // Give EXP
+                player_add_exp(player, 20);
+
+                combat->active = 0;
+
+                combat->player_decision = 0;
+                combat->enemy_decision = 0;
+
+                return;
+            }
+        }
+
+        // Enemy attacks
+        combat->enemy_decision = 1;
+
+        int damage = 1;
+
+        if (combat->player_defending)
+        {
+            damage /= 2;
+            combat->player_defending = 0;
+        }
+
+        combat->enemy_damage_dealt = damage;
+
+        player->hp -= damage;
+
+        // Check if player died
+        if (player->hp <= 0)
+        {
+            player->hp = 0;
+
+            combat->active = 0;
+
+            combat->player_decision = 0;
+            combat->enemy_decision = 0;
+
+            return;
+        }
+    }
+
+    // Defend
+    else if (input == '3')
+    {
+        combat->player_decision = 3;
         combat->player_defending = 1;
 
         // Enemy attacks
@@ -172,7 +248,7 @@ void combat_handle_input(
     }
 
     // Run
-    else if (input == '3')
+    else if (input == '4')
     {
         combat->active = 0;
 
