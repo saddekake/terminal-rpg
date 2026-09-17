@@ -62,11 +62,8 @@ void combat_render(const Combat *combat, const Player *player)
         printf("Enemy decided:\n");
     }
 
-    if (combat->player_damage_dealt > 0)
-    {
-        printf("You dealt %d damage.\n",
-               combat->player_damage_dealt);
-    }
+    printf("You dealt %d damage.\n",
+        combat->player_damage_dealt);
 
     if (combat->enemy_decision == 1)
     {
@@ -80,6 +77,10 @@ void combat_handle_input(
     Player *player,
     char input)
 {
+    // Reset turn results
+    combat->player_damage_dealt = 0;
+    combat->enemy_damage_dealt = 0;
+
     // Quick Attack
     if (input == '1')
     {
