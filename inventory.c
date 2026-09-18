@@ -118,6 +118,12 @@ void inventory_render(
         visible_end = player->item_count;
     }
 
+    // More items above
+    if (inventory->item_scroll > 0)
+    {
+        printf("  ^ More above\n");
+    }
+
     for (int i = inventory->item_scroll;
          i < visible_end;
          i++)
@@ -143,6 +149,12 @@ void inventory_render(
                    player->items[i].definition->name,
                    player->items[i].quantity);
         }
+    }
+
+    // More items below
+    if (visible_end < player->item_count)
+    {
+        printf("  v More below\n");
     }
 
     printf("\n");

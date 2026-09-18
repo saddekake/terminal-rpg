@@ -20,6 +20,8 @@ typedef struct
     int damage_negation;
     int healing;
 
+    int unique;
+
 } ItemDefinition;
 
 const ItemDefinition *item_find(

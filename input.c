@@ -3,16 +3,31 @@
 #ifdef _WIN32
 
 #include <conio.h>
+#include <stdio.h>
 #include <windows.h>
 
 void disable_raw_mode(void)
 {
-    // Windows doesn't need anything here.
+    printf("\033[?1049l");
+    fflush(stdout);
 }
 
 void enable_raw_mode(void)
 {
-    // _getch() already reads a key immediately.
+    HANDLE output =
+        GetStdHandle(STD_OUTPUT_HANDLE);
+
+    DWORD mode = 0;
+
+    if (GetConsoleMode(output, &mode))
+    {
+        mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+
+        SetConsoleMode(output, mode);
+    }
+
+    printf("\033[?1049h");
+    fflush(stdout);
 }
 
 char get_input(void)

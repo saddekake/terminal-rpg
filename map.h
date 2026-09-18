@@ -1,6 +1,8 @@
 #ifndef MAP_H
 #define MAP_H
 
+#include "loot.h"
+
 #define WIDTH 19
 #define HEIGHT 7
 
@@ -36,6 +38,14 @@ int map_find_exit(
     int *destination_room,
     int *destination_x,
     int *destination_y
+);
+
+int map_open_chest(
+    int current_room,
+    int x,
+    int y,
+    const Player *player,
+    LootResults *results
 );
 
 #endif

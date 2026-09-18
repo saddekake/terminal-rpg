@@ -43,4 +43,10 @@ void player_init(Player *player);
 void player_move(Player *player, int x, int y);
 void player_add_exp(Player *player, int amount);
 
+void player_add_item(
+    Player *player,
+    const ItemDefinition *definition,
+    int quantity
+);
+
 #endif

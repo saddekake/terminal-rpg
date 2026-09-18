@@ -8,6 +8,7 @@
 #include "combat.h"
 #include "dialogue.h"
 #include "inventory.h"
+#include "loot.h"
 
 Player player;
 Combat combat;
@@ -21,6 +22,9 @@ int main(void)
 
     int help_screen = 0;
     int control_index = 0;
+
+    int loot_active = 0;
+    LootResults loot_results;
 
     // Startup messages
     const char *messages_title = "STARTUP";
@@ -50,6 +54,7 @@ int main(void)
     player_init(&player);
 
     combat.active = 0;
+    combat.loot_active = 0;
 
     dialogue.active = 0;
     dialogue.message_index = 0;
@@ -63,30 +68,53 @@ int main(void)
         // Clear terminal
         printf("\033[2J\033[H");
 
+        // Post-battle loot screen
+        if (combat.loot_active)
+        {
+            loot_render(
+                &combat.loot_results);
+        }
+
+        // Chest loot screen
+        else if (loot_active)
+        {
+            loot_render(
+                &loot_results);
+        }
+
         // Combat screen
-        if (combat.active)
+        else if (combat.active)
         {
             if (inventory.active &&
                 inventory.mode == INVENTORY_COMBAT)
             {
-                inventory_render(&inventory, &player);
+                inventory_render(
+                    &inventory,
+                    &player);
             }
             else
             {
-                combat_render(&combat, &player);
+                combat_render(
+                    &combat,
+                    &player);
             }
         }
 
         // Inventory screen
         else if (inventory.active)
         {
-            inventory_render(&inventory, &player);
+            inventory_render(
+                &inventory,
+                &player);
         }
 
         // Normal map screen
         else
         {
-            map_render(current_room, player.x, player.y);
+            map_render(
+                current_room,
+                player.x,
+                player.y);
 
             // Message
             if (dialogue.active)
@@ -95,13 +123,19 @@ int main(void)
             }
             else if (help_screen)
             {
-                printf("\n%s\n", controls_title);
-                printf("%s\n", controls[control_index]);
+                printf("\n%s\n",
+                       controls_title);
+
+                printf("%s\n",
+                       controls[control_index]);
             }
             else if (messages[message_index][0] != '\0')
             {
-                printf("\n%s\n", messages_title);
-                printf("%s\n", messages[message_index]);
+                printf("\n%s\n",
+                       messages_title);
+
+                printf("%s\n",
+                       messages[message_index]);
             }
         }
 
@@ -112,6 +146,38 @@ int main(void)
         if (input == 'q' || input == 'Q')
         {
             break;
+        }
+
+        // Post-battle loot screen
+        if (combat.loot_active)
+        {
+            if (input == 'n' || input == 'N')
+            {
+                combat.loot_active = 0;
+            }
+
+            continue;
+        }
+
+        // Chest loot screen
+        if (loot_active)
+        {
+            if (input == 'n' || input == 'N')
+            {
+                for (int i = 0;
+                     i < loot_results.result_count;
+                     i++)
+                {
+                    player_add_item(
+                        &player,
+                        loot_results.results[i].definition,
+                        loot_results.results[i].quantity);
+                }
+
+                loot_active = 0;
+            }
+
+            continue;
         }
 
         // Combat
@@ -155,7 +221,9 @@ int main(void)
         // NPC dialogue
         if (dialogue.active)
         {
-            dialogue_handle_input(&dialogue, input);
+            dialogue_handle_input(
+                &dialogue,
+                input);
 
             continue;
         }
@@ -245,7 +313,10 @@ int main(void)
 
         // Check what is at the proposed position
         char destination_tile =
-            map_get_tile(current_room, new_x, new_y);
+            map_get_tile(
+                current_room,
+                new_x,
+                new_y);
 
         // Doorway
         if (destination_tile == 'I')
@@ -280,13 +351,32 @@ int main(void)
         // Enemy
         else if (destination_tile == 'X')
         {
-            combat_start(&combat, &player);
+            combat_start(
+                &combat,
+                &player);
+        }
+
+        // Chest
+        else if (destination_tile == 'C')
+        {
+            if (map_open_chest(
+                    current_room,
+                    new_x,
+                    new_y,
+                    &player,
+                    &loot_results))
+            {
+                loot_active = 1;
+            }
         }
 
         // Normal walkable tile
         else if (destination_tile != '#')
         {
-            player_move(&player, new_x, new_y);
+            player_move(
+                &player,
+                new_x,
+                new_y);
         }
     }
 

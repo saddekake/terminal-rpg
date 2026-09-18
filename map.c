@@ -25,7 +25,7 @@ struct Room rooms[2] = {
     // Room 1
     {
         {"###################",
-         "#                 #",
+         "#                C#",
          "#    #######      #",
          "I                 #",
          "#   X      ####   #",
@@ -40,6 +40,69 @@ struct Room rooms[2] = {
 
         1}
     };
+
+static const LootEntry chest_loot_entries[] = {
+    {
+        .definition = NULL,
+        .weight = 10,
+        .min_quantity = 0,
+        .max_quantity = 0
+    },
+    {
+        .definition = NULL,
+        .weight = 20,
+        .min_quantity = 1,
+        .max_quantity = 2
+    },
+    {
+        .definition = NULL,
+        .weight = 30,
+        .min_quantity = 1,
+        .max_quantity = 3
+    },
+    {
+        .definition = NULL,
+        .weight = 20,
+        .min_quantity = 1,
+        .max_quantity = 2
+    },
+    {
+        .definition = NULL,
+        .weight = 10,
+        .min_quantity = 1,
+        .max_quantity = 1
+    },
+    {
+        .definition = NULL,
+        .weight = 5,
+        .min_quantity = 1,
+        .max_quantity = 1
+    },
+    {
+        .definition = NULL,
+        .weight = 3,
+        .min_quantity = 1,
+        .max_quantity = 1
+    },
+    {
+        .definition = NULL,
+        .weight = 1,
+        .min_quantity = 1,
+        .max_quantity = 1
+    },
+    {
+        .definition = NULL,
+        .weight = 1,
+        .min_quantity = 1,
+        .max_quantity = 1
+    },
+    {
+        .definition = NULL,
+        .weight = 1,
+        .min_quantity = 1,
+        .max_quantity = 1
+    }
+};
 
 void map_render(int current_room, int player_x, int player_y)
 {
@@ -95,4 +158,83 @@ int map_find_exit(
     }
 
     return 0;
+}
+
+int map_open_chest(
+    int current_room,
+    int x,
+    int y,
+    const Player *player,
+    LootResults *results)
+{
+    if (map_get_tile(
+            current_room,
+            x,
+            y) != 'C')
+    {
+        return 0;
+    }
+
+    LootEntry entries[
+        sizeof(chest_loot_entries) /
+        sizeof(chest_loot_entries[0])
+    ];
+
+    int chest_loot_entry_count =
+        sizeof(chest_loot_entries) /
+        sizeof(chest_loot_entries[0]);
+
+    for (int i = 0;
+         i < chest_loot_entry_count;
+         i++)
+    {
+        entries[i] = chest_loot_entries[i];
+    }
+
+    entries[0].definition =
+        NULL;
+
+    entries[1].definition =
+        item_find("Bronze Sword");
+
+    entries[2].definition =
+        item_find("Bronze Armor");
+
+    entries[3].definition =
+        item_find("Health Potion");
+
+    entries[4].definition =
+        item_find("Gold Coin");
+
+    entries[5].definition =
+        item_find("Quartz");
+
+    entries[6].definition =
+        item_find("Amethyst");
+
+    entries[7].definition =
+        item_find("Emerald");
+
+    entries[8].definition =
+        item_find("Ruby");
+
+    entries[9].definition =
+        item_find("Sapphire");
+
+    LootTable table = {
+        .entries = entries,
+        .entry_count =
+            sizeof(entries) /
+            sizeof(entries[0]),
+        .rolls = 15
+    };
+
+    loot_generate(
+        &table,
+        player,
+        results);
+
+    rooms[current_room].map[y][x] = ' ';
+
+    return 1;
 }

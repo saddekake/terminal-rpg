@@ -3,9 +3,115 @@
 
 #include "combat.h"
 
+// Like Skelly himself, I'm hardcoding this until v0.4 when I'm implementing enemy defs. Want to pace myself
+static const LootEntry skelly_loot_entries[] = {
+    {
+        .definition = NULL,
+        .weight = 70,
+        .min_quantity = 0,
+        .max_quantity = 0
+    },
+
+    {
+        .definition = NULL,
+        .weight = 10,
+        .min_quantity = 1,
+        .max_quantity = 1
+    },
+
+    {
+        .definition = NULL,
+        .weight = 20,
+        .min_quantity = 1,
+        .max_quantity = 2
+    },
+
+    {
+        .definition = NULL,
+        .weight = 4,
+        .min_quantity = 1,
+        .max_quantity = 1
+    },
+
+    {
+        .definition = NULL,
+        .weight = 1,
+        .min_quantity = 1,
+        .max_quantity = 1
+    }
+};
+
+static const LootTable skelly_loot_table = {
+    .entries = skelly_loot_entries,
+    .entry_count =
+        sizeof(skelly_loot_entries) /
+        sizeof(skelly_loot_entries[0]),
+    .rolls = 2
+};
+
+static void combat_generate_loot(
+    Combat *combat,
+    Player *player)
+{
+    LootEntry entries[
+        sizeof(skelly_loot_entries) /
+        sizeof(skelly_loot_entries[0])
+    ];
+
+    for (int i = 0;
+         i < skelly_loot_table.entry_count;
+         i++)
+    {
+        entries[i] =
+            skelly_loot_entries[i];
+    }
+
+    entries[0].definition = NULL;
+
+    entries[1].definition =
+        item_find("Health Potion");
+
+    entries[2].definition =
+        item_find("Gold Coin");
+
+    entries[3].definition =
+        item_find("Quartz");
+
+    entries[4].definition =
+        item_find("Amethyst");
+
+    LootTable table = {
+        .entries = entries,
+        .entry_count =
+            skelly_loot_table.entry_count,
+        .rolls = skelly_loot_table.rolls
+    };
+
+    LootResults results;
+
+    loot_generate(
+        &table,
+        player,
+        &results);
+
+    for (int i = 0;
+         i < results.result_count;
+         i++)
+    {
+        player_add_item(
+            player,
+            results.results[i].definition,
+            results.results[i].quantity);
+    }
+
+    combat->loot_results = results;
+    combat->loot_active = 1;
+}
+
 void combat_start(Combat *combat, Player *player)
 {
     combat->active = 1;
+    combat->loot_active = 0;
 
     combat->enemy_hp = 7;
     combat->enemy_max_hp = 7;
@@ -19,9 +125,13 @@ void combat_start(Combat *combat, Player *player)
 
     combat->player_damage_dealt = 0;
     combat->enemy_damage_dealt = 0;
+
+    combat->loot_results.result_count = 0;
 }
 
-void combat_render(const Combat *combat, const Player *player)
+void combat_render(
+    const Combat *combat,
+    const Player *player)
 {
     printf("Skelly The Skeleton\n");
     printf("HP: %d/%d\n\n",
@@ -77,7 +187,7 @@ void combat_render(const Combat *combat, const Player *player)
         combat->player_decision == 2)
     {
         printf("You dealt %d damage.\n",
-            combat->player_damage_dealt);
+               combat->player_damage_dealt);
     }
 
     if (combat->enemy_decision == 1)
@@ -116,15 +226,19 @@ void combat_handle_input(
             player->weapons[player->current_weapon]
                 .definition->damage;
 
-        combat->enemy_hp -= combat->player_damage_dealt;
+        combat->enemy_hp -=
+            combat->player_damage_dealt;
 
         // Check if enemy died
         if (combat->enemy_hp <= 0)
         {
             combat->enemy_hp = 0;
 
-            // Give EXP
             player_add_exp(player, 20);
+
+            combat_generate_loot(
+                combat,
+                player);
 
             combat->active = 0;
 
@@ -139,7 +253,6 @@ void combat_handle_input(
 
         int damage = 2;
 
-        // Armor negates damage
         damage -=
             player->armor[player->current_armor]
                 .definition->damage_negation;
@@ -159,7 +272,6 @@ void combat_handle_input(
 
         player->hp -= damage;
 
-        // Check if player died
         if (player->hp <= 0)
         {
             player->hp = 0;
@@ -183,20 +295,22 @@ void combat_handle_input(
 
         if (hit_chance < 70)
         {
-            // Player attacks
             combat->player_damage_dealt =
                 player->weapons[player->current_weapon]
                     .definition->damage * 2;
 
-            combat->enemy_hp -= combat->player_damage_dealt;
+            combat->enemy_hp -=
+                combat->player_damage_dealt;
 
-            // Check if enemy died
             if (combat->enemy_hp <= 0)
             {
                 combat->enemy_hp = 0;
 
-                // Give EXP
                 player_add_exp(player, 20);
+
+                combat_generate_loot(
+                    combat,
+                    player);
 
                 combat->active = 0;
 
@@ -212,7 +326,6 @@ void combat_handle_input(
 
         int damage = 2;
 
-        // Armor negates damage
         damage -=
             player->armor[player->current_armor]
                 .definition->damage_negation;
@@ -232,7 +345,6 @@ void combat_handle_input(
 
         player->hp -= damage;
 
-        // Check if player died
         if (player->hp <= 0)
         {
             player->hp = 0;
@@ -257,7 +369,6 @@ void combat_handle_input(
 
         int damage = 2;
 
-        // Armor negates damage
         damage -=
             player->armor[player->current_armor]
                 .definition->damage_negation;
@@ -277,7 +388,6 @@ void combat_handle_input(
 
         player->hp -= damage;
 
-        // Check if player died
         if (player->hp <= 0)
         {
             player->hp = 0;
