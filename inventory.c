@@ -23,6 +23,8 @@ void inventory_open(
     inventory->active = 1;
     inventory->mode = mode;
 
+    inventory->item_scroll = 0;
+
     if (mode == INVENTORY_NORMAL)
     {
         inventory->selected_category = 0;
@@ -30,7 +32,6 @@ void inventory_open(
     }
     else
     {
-        // Combat inventory starts on Items
         inventory->selected_category = 2;
         inventory->selected_item = 0;
     }
@@ -64,10 +65,12 @@ void inventory_render(
     }
 
     printf("  %s\n",
-           player->weapons[player->current_weapon].name);
+           player->weapons[player->current_weapon]
+               .definition->name);
 
     printf("  Attack: +%d\n\n",
-           player->weapons[player->current_weapon].damage);
+           player->weapons[player->current_weapon]
+               .definition->damage);
 
     // Armor
     if (inventory->mode == INVENTORY_NORMAL &&
@@ -81,10 +84,12 @@ void inventory_render(
     }
 
     printf("  %s\n",
-           player->armor[player->current_armor].name);
+           player->armor[player->current_armor]
+               .definition->name);
 
     printf("  Damage Negation: %d\n\n",
-           player->armor[player->current_armor].damage_negation);
+           player->armor[player->current_armor]
+               .definition->damage_negation);
 
     // Items
     if (inventory->mode == INVENTORY_NORMAL)
@@ -103,13 +108,25 @@ void inventory_render(
         }
     }
 
-    for (int i = 0; i < player->item_count; i++)
+    // Visible item window
+    int visible_end =
+        inventory->item_scroll +
+        INVENTORY_VISIBLE_ITEMS;
+
+    if (visible_end > player->item_count)
+    {
+        visible_end = player->item_count;
+    }
+
+    for (int i = inventory->item_scroll;
+         i < visible_end;
+         i++)
     {
         if (inventory->mode == INVENTORY_COMBAT &&
             inventory->selected_item == i)
         {
             printf("> %s (x%d)\n",
-                   player->items[i].name,
+                   player->items[i].definition->name,
                    player->items[i].quantity);
         }
         else if (inventory->mode == INVENTORY_NORMAL &&
@@ -117,13 +134,13 @@ void inventory_render(
                  inventory->selected_item == i)
         {
             printf("> %s (x%d)\n",
-                   player->items[i].name,
+                   player->items[i].definition->name,
                    player->items[i].quantity);
         }
         else
         {
             printf("  %s (x%d)\n",
-                   player->items[i].name,
+                   player->items[i].definition->name,
                    player->items[i].quantity);
         }
     }
@@ -136,21 +153,24 @@ void inventory_render(
         if (inventory->selected_category == 0)
         {
             printf("Selected: %s\n",
-                   player->weapons[player->current_weapon].name);
+                   player->weapons[player->current_weapon]
+                       .definition->name);
 
             printf("B/N: Select    E: Cycle Weapon    I: Close\n");
         }
         else if (inventory->selected_category == 1)
         {
             printf("Selected: %s\n",
-                   player->armor[player->current_armor].name);
+                   player->armor[player->current_armor]
+                       .definition->name);
 
             printf("B/N: Select    E: Cycle Armor    I: Close\n");
         }
         else if (player->item_count > 0)
         {
             printf("Selected: %s\n",
-                   player->items[inventory->selected_item].name);
+                   player->items[inventory->selected_item]
+                       .definition->name);
 
             printf("B/N: Select    E: Cannot Use    I: Close\n");
         }
@@ -168,7 +188,8 @@ void inventory_render(
         if (player->item_count > 0)
         {
             printf("Selected: %s\n",
-                   player->items[inventory->selected_item].name);
+                   player->items[inventory->selected_item]
+                       .definition->name);
 
             printf("B/N: Select    E: Use Item    I: Return\n");
         }
@@ -201,10 +222,14 @@ void inventory_handle_input(
                 player->item_count - 1)
             {
                 inventory->selected_item++;
-            }
-            else
-            {
-                inventory->selected_item = 0;
+
+                // Scroll down whhn selection reaches the bottom of the visible window
+                if (inventory->selected_item >=
+                    inventory->item_scroll +
+                        INVENTORY_VISIBLE_ITEMS)
+                {
+                    inventory->item_scroll++;
+                }
             }
         }
 
@@ -219,11 +244,13 @@ void inventory_handle_input(
             if (inventory->selected_item > 0)
             {
                 inventory->selected_item--;
-            }
-            else
-            {
-                inventory->selected_item =
-                    player->item_count - 1;
+
+                // Scroll up when selection reaches the top of the visible window
+                if (inventory->selected_item <
+                    inventory->item_scroll)
+                {
+                    inventory->item_scroll--;
+                }
             }
         }
 
@@ -235,7 +262,7 @@ void inventory_handle_input(
                 return;
             }
 
-            Item *item =
+            InventoryItem *item =
                 &player->items[inventory->selected_item];
 
             if (item->quantity <= 0)
@@ -243,9 +270,11 @@ void inventory_handle_input(
                 return;
             }
 
-            if (item->type == ITEM_HEALTH_POTION)
+            if (item->definition->category ==
+                ITEM_CONSUMABLE)
             {
-                player->hp += item->healing;
+                player->hp +=
+                    item->definition->healing;
 
                 if (player->hp > player->max_hp)
                 {
@@ -253,11 +282,6 @@ void inventory_handle_input(
                 }
 
                 item->quantity--;
-            }
-
-            else if (item->type == ITEM_PLACEHOLDER_POTION)
-            {
-                // Does nothing for now.
             }
 
             // Remove empty item
@@ -276,12 +300,38 @@ void inventory_handle_input(
                 if (player->item_count == 0)
                 {
                     inventory->selected_item = 0;
+                    inventory->item_scroll = 0;
                 }
-                else if (inventory->selected_item >=
-                         player->item_count)
+                else
                 {
-                    inventory->selected_item =
-                        player->item_count - 1;
+                    if (inventory->selected_item >=
+                        player->item_count)
+                    {
+                        inventory->selected_item =
+                            player->item_count - 1;
+                    }
+
+                    // Make sure the selected item is still inside the visible window
+                    if (inventory->selected_item <
+                        inventory->item_scroll)
+                    {
+                        inventory->item_scroll =
+                            inventory->selected_item;
+                    }
+
+                    if (inventory->item_scroll +
+                            INVENTORY_VISIBLE_ITEMS >
+                        player->item_count)
+                    {
+                        inventory->item_scroll =
+                            player->item_count -
+                            INVENTORY_VISIBLE_ITEMS;
+
+                        if (inventory->item_scroll < 0)
+                        {
+                            inventory->item_scroll = 0;
+                        }
+                    }
                 }
             }
         }
@@ -298,6 +348,9 @@ void inventory_handle_input(
             if (player->item_count == 0)
             {
                 inventory->selected_category = 0;
+                inventory->selected_item = 0;
+                inventory->item_scroll = 0;
+
                 return;
             }
 
@@ -305,16 +358,33 @@ void inventory_handle_input(
                 player->item_count - 1)
             {
                 inventory->selected_item++;
+
+                // Scroll down when selection reaches the bottom of the visible window
+                if (inventory->selected_item >=
+                    inventory->item_scroll +
+                        INVENTORY_VISIBLE_ITEMS)
+                {
+                    inventory->item_scroll++;
+                }
             }
             else
             {
+                // At the final item, move to the next category
                 inventory->selected_category = 0;
                 inventory->selected_item = 0;
+                inventory->item_scroll = 0;
             }
         }
         else
         {
             inventory->selected_category++;
+
+            // Entering Items starts at the beginning
+            if (inventory->selected_category == 2)
+            {
+                inventory->selected_item = 0;
+                inventory->item_scroll = 0;
+            }
         }
     }
 
@@ -326,10 +396,20 @@ void inventory_handle_input(
             if (inventory->selected_item > 0)
             {
                 inventory->selected_item--;
+
+                // Scroll up when selection reaches the top of the visible window
+                if (inventory->selected_item <
+                    inventory->item_scroll)
+                {
+                    inventory->item_scroll--;
+                }
             }
             else
             {
+                // At the first item, move to the previous category
                 inventory->selected_category = 1;
+                inventory->selected_item = 0;
+                inventory->item_scroll = 0;
             }
         }
         else if (inventory->selected_category > 0)
@@ -343,6 +423,16 @@ void inventory_handle_input(
                 inventory->selected_category = 2;
                 inventory->selected_item =
                     player->item_count - 1;
+
+                // Position the window at the end of the item list
+                inventory->item_scroll =
+                    player->item_count -
+                    INVENTORY_VISIBLE_ITEMS;
+
+                if (inventory->item_scroll < 0)
+                {
+                    inventory->item_scroll = 0;
+                }
             }
             else
             {
@@ -383,8 +473,5 @@ void inventory_handle_input(
                 }
             }
         }
-
-        // Items
-        // Items cannot be used outside combat.
     }
 }

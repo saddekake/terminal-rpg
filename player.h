@@ -1,39 +1,18 @@
 #ifndef PLAYER_H
 #define PLAYER_H
 
+#include "items.h"
+
 #define MAX_WEAPONS 10
 #define MAX_ARMOR 10
 #define MAX_ITEMS 20
 
 typedef struct
 {
-    const char *name;
-    int damage;
-
-} Weapon;
-
-typedef struct
-{
-    const char *name;
-    int damage_negation;
-
-} Armor;
-
-typedef enum
-{
-    ITEM_HEALTH_POTION,
-    ITEM_PLACEHOLDER_POTION
-
-} ItemType;
-
-typedef struct
-{
-    const char *name;
-    ItemType type;
-    int healing;
+    const ItemDefinition *definition;
     int quantity;
 
-} Item;
+} InventoryItem;
 
 typedef struct
 {
@@ -47,15 +26,15 @@ typedef struct
     int exp;
     int exp_required;
 
-    Weapon weapons[MAX_WEAPONS];
+    InventoryItem weapons[MAX_WEAPONS];
     int weapon_count;
     int current_weapon;
 
-    Armor armor[MAX_ARMOR];
+    InventoryItem armor[MAX_ARMOR];
     int armor_count;
     int current_armor;
 
-    Item items[MAX_ITEMS];
+    InventoryItem items[MAX_ITEMS];
     int item_count;
 
 } Player;

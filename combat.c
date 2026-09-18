@@ -73,8 +73,12 @@ void combat_render(const Combat *combat, const Player *player)
         printf("Enemy decided:\n");
     }
 
-    printf("You dealt %d damage.\n",
-           combat->player_damage_dealt);
+    if (combat->player_decision == 1 ||
+        combat->player_decision == 2)
+    {
+        printf("You dealt %d damage.\n",
+            combat->player_damage_dealt);
+    }
 
     if (combat->enemy_decision == 1)
     {
@@ -109,7 +113,8 @@ void combat_handle_input(
 
         // Player attacks
         combat->player_damage_dealt =
-            player->weapons[player->current_weapon].damage;
+            player->weapons[player->current_weapon]
+                .definition->damage;
 
         combat->enemy_hp -= combat->player_damage_dealt;
 
@@ -136,7 +141,8 @@ void combat_handle_input(
 
         // Armor negates damage
         damage -=
-            player->armor[player->current_armor].damage_negation;
+            player->armor[player->current_armor]
+                .definition->damage_negation;
 
         if (damage < 0)
         {
@@ -179,7 +185,8 @@ void combat_handle_input(
         {
             // Player attacks
             combat->player_damage_dealt =
-                player->weapons[player->current_weapon].damage * 2;
+                player->weapons[player->current_weapon]
+                    .definition->damage * 2;
 
             combat->enemy_hp -= combat->player_damage_dealt;
 
@@ -207,7 +214,8 @@ void combat_handle_input(
 
         // Armor negates damage
         damage -=
-            player->armor[player->current_armor].damage_negation;
+            player->armor[player->current_armor]
+                .definition->damage_negation;
 
         if (damage < 0)
         {
@@ -251,7 +259,8 @@ void combat_handle_input(
 
         // Armor negates damage
         damage -=
-            player->armor[player->current_armor].damage_negation;
+            player->armor[player->current_armor]
+                .definition->damage_negation;
 
         if (damage < 0)
         {

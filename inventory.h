@@ -3,6 +3,8 @@
 
 #include "player.h"
 
+#define INVENTORY_VISIBLE_ITEMS 5
+
 typedef enum
 {
     INVENTORY_NORMAL,
@@ -18,6 +20,7 @@ typedef struct
 
     int selected_category;
     int selected_item;
+    int item_scroll;
 
 } Inventory;
 
