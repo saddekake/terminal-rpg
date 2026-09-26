@@ -3,94 +3,14 @@
 
 #include "combat.h"
 
-// Like Skelly himself, I'm hardcoding this until v0.4 when I'm implementing enemy defs. Want to pace myself
-static const LootEntry skelly_loot_entries[] = {
-    {
-        .definition = NULL,
-        .weight = 70,
-        .min_quantity = 0,
-        .max_quantity = 0
-    },
-
-    {
-        .definition = NULL,
-        .weight = 10,
-        .min_quantity = 1,
-        .max_quantity = 1
-    },
-
-    {
-        .definition = NULL,
-        .weight = 20,
-        .min_quantity = 1,
-        .max_quantity = 2
-    },
-
-    {
-        .definition = NULL,
-        .weight = 4,
-        .min_quantity = 1,
-        .max_quantity = 1
-    },
-
-    {
-        .definition = NULL,
-        .weight = 1,
-        .min_quantity = 1,
-        .max_quantity = 1
-    }
-};
-
-static const LootTable skelly_loot_table = {
-    .entries = skelly_loot_entries,
-    .entry_count =
-        sizeof(skelly_loot_entries) /
-        sizeof(skelly_loot_entries[0]),
-    .rolls = 2
-};
-
 static void combat_generate_loot(
     Combat *combat,
     Player *player)
 {
-    LootEntry entries[
-        sizeof(skelly_loot_entries) /
-        sizeof(skelly_loot_entries[0])
-    ];
-
-    for (int i = 0;
-         i < skelly_loot_table.entry_count;
-         i++)
-    {
-        entries[i] =
-            skelly_loot_entries[i];
-    }
-
-    entries[0].definition = NULL;
-
-    entries[1].definition =
-        item_find("Health Potion");
-
-    entries[2].definition =
-        item_find("Gold Coin");
-
-    entries[3].definition =
-        item_find("Quartz");
-
-    entries[4].definition =
-        item_find("Amethyst");
-
-    LootTable table = {
-        .entries = entries,
-        .entry_count =
-            skelly_loot_table.entry_count,
-        .rolls = skelly_loot_table.rolls
-    };
-
     LootResults results;
 
     loot_generate(
-        &table,
+        &combat->enemy->loot_table,
         player,
         &results);
 
@@ -108,17 +28,120 @@ static void combat_generate_loot(
     combat->loot_active = 1;
 }
 
-void combat_start(Combat *combat, Player *player)
+static int combat_enemy_turn(
+    Combat *combat,
+    Player *player)
+{
+    EnemyAction action =
+        enemy_choose_action(
+            combat->enemy,
+            combat->enemy_hp,
+            player->hp,
+            player->max_hp);
+
+    combat->enemy_decision =
+        action + 1;
+
+    combat->enemy_damage_dealt = 0;
+
+    combat->enemy_defending = 0;
+
+    // Quick Attack
+    if (action == ENEMY_QUICK_ATTACK)
+    {
+        int damage =
+            combat->enemy->damage;
+
+        damage -=
+            player->armor[player->current_armor]
+                .definition->damage_negation;
+
+        if (damage < 0)
+        {
+            damage = 0;
+        }
+
+        if (combat->player_defending)
+        {
+            damage /= 2;
+            combat->player_defending = 0;
+        }
+
+        combat->enemy_damage_dealt =
+            damage;
+
+        player->hp -= damage;
+    }
+
+    // Heavy Attack
+    else if (action == ENEMY_HEAVY_ATTACK)
+    {
+        int hit_chance =
+            rand() % 100;
+
+        if (hit_chance < 70)
+        {
+            int damage =
+                combat->enemy->damage * 2;
+
+            damage -=
+                player->armor[player->current_armor]
+                    .definition->damage_negation;
+
+            if (damage < 0)
+            {
+                damage = 0;
+            }
+
+            if (combat->player_defending)
+            {
+                damage /= 2;
+                combat->player_defending = 0;
+            }
+
+            combat->enemy_damage_dealt =
+                damage;
+
+            player->hp -= damage;
+        }
+    }
+
+    // Defend
+    else if (action == ENEMY_DEFEND)
+    {
+        combat->enemy_defending = 1;
+    }
+
+    if (player->hp <= 0)
+    {
+        player->hp = 0;
+
+        combat->active = 0;
+
+        combat->player_decision = 0;
+        combat->enemy_decision = 0;
+
+        return 0;
+    }
+
+    return 1;
+}
+
+void combat_start(
+    Combat *combat,
+    Player *player,
+    const EnemyDefinition *enemy)
 {
     combat->active = 1;
     combat->loot_active = 0;
 
-    combat->enemy_hp = 7;
-    combat->enemy_max_hp = 7;
+    combat->enemy = enemy;
+    combat->enemy_hp = enemy->max_hp;
 
     player->hp = player->max_hp;
 
     combat->player_defending = 0;
+    combat->enemy_defending = 0;
 
     combat->player_decision = 0;
     combat->enemy_decision = 0;
@@ -133,10 +156,12 @@ void combat_render(
     const Combat *combat,
     const Player *player)
 {
-    printf("Skelly The Skeleton\n");
+    printf("%s\n",
+           combat->enemy->name);
+
     printf("HP: %d/%d\n\n",
            combat->enemy_hp,
-           combat->enemy_max_hp);
+           combat->enemy->max_hp);
 
     printf("You\n");
     printf("HP: %d/%d\n\n",
@@ -176,7 +201,15 @@ void combat_render(
 
     if (combat->enemy_decision == 1)
     {
-        printf("Enemy decided: Default Attack\n");
+        printf("Enemy decided: Quick Attack\n");
+    }
+    else if (combat->enemy_decision == 2)
+    {
+        printf("Enemy decided: Heavy Attack\n");
+    }
+    else if (combat->enemy_decision == 3)
+    {
+        printf("Enemy decided: Defend\n");
     }
     else
     {
@@ -190,9 +223,11 @@ void combat_render(
                combat->player_damage_dealt);
     }
 
-    if (combat->enemy_decision == 1)
+    if (combat->enemy_decision == 1 ||
+        combat->enemy_decision == 2)
     {
-        printf("Skelly dealt %d damage.\n",
+        printf("%s dealt %d damage.\n",
+               combat->enemy->name,
                combat->enemy_damage_dealt);
     }
 }
@@ -221,10 +256,15 @@ void combat_handle_input(
     {
         combat->player_decision = 1;
 
-        // Player attacks
         combat->player_damage_dealt =
             player->weapons[player->current_weapon]
                 .definition->damage;
+
+        if (combat->enemy_defending)
+        {
+            combat->player_damage_dealt /= 2;
+            combat->enemy_defending = 0;
+        }
 
         combat->enemy_hp -=
             combat->player_damage_dealt;
@@ -234,7 +274,9 @@ void combat_handle_input(
         {
             combat->enemy_hp = 0;
 
-            player_add_exp(player, 20);
+            player_add_exp(
+                player,
+                combat->enemy->exp_reward);
 
             combat_generate_loot(
                 combat,
@@ -248,39 +290,10 @@ void combat_handle_input(
             return;
         }
 
-        // Enemy attacks
-        combat->enemy_decision = 1;
-
-        int damage = 2;
-
-        damage -=
-            player->armor[player->current_armor]
-                .definition->damage_negation;
-
-        if (damage < 0)
+        if (!combat_enemy_turn(
+                combat,
+                player))
         {
-            damage = 0;
-        }
-
-        if (combat->player_defending)
-        {
-            damage /= 2;
-            combat->player_defending = 0;
-        }
-
-        combat->enemy_damage_dealt = damage;
-
-        player->hp -= damage;
-
-        if (player->hp <= 0)
-        {
-            player->hp = 0;
-
-            combat->active = 0;
-
-            combat->player_decision = 0;
-            combat->enemy_decision = 0;
-
             return;
         }
     }
@@ -291,13 +304,20 @@ void combat_handle_input(
         combat->player_decision = 2;
 
         // 70% chance to hit
-        int hit_chance = rand() % 100;
+        int hit_chance =
+            rand() % 100;
 
         if (hit_chance < 70)
         {
             combat->player_damage_dealt =
                 player->weapons[player->current_weapon]
                     .definition->damage * 2;
+
+            if (combat->enemy_defending)
+            {
+                combat->player_damage_dealt /= 2;
+                combat->enemy_defending = 0;
+            }
 
             combat->enemy_hp -=
                 combat->player_damage_dealt;
@@ -306,7 +326,9 @@ void combat_handle_input(
             {
                 combat->enemy_hp = 0;
 
-                player_add_exp(player, 20);
+                player_add_exp(
+                    player,
+                    combat->enemy->exp_reward);
 
                 combat_generate_loot(
                     combat,
@@ -321,39 +343,10 @@ void combat_handle_input(
             }
         }
 
-        // Enemy attacks
-        combat->enemy_decision = 1;
-
-        int damage = 2;
-
-        damage -=
-            player->armor[player->current_armor]
-                .definition->damage_negation;
-
-        if (damage < 0)
+        if (!combat_enemy_turn(
+                combat,
+                player))
         {
-            damage = 0;
-        }
-
-        if (combat->player_defending)
-        {
-            damage /= 2;
-            combat->player_defending = 0;
-        }
-
-        combat->enemy_damage_dealt = damage;
-
-        player->hp -= damage;
-
-        if (player->hp <= 0)
-        {
-            player->hp = 0;
-
-            combat->active = 0;
-
-            combat->player_decision = 0;
-            combat->enemy_decision = 0;
-
             return;
         }
     }
@@ -364,39 +357,10 @@ void combat_handle_input(
         combat->player_decision = 3;
         combat->player_defending = 1;
 
-        // Enemy attacks
-        combat->enemy_decision = 1;
-
-        int damage = 2;
-
-        damage -=
-            player->armor[player->current_armor]
-                .definition->damage_negation;
-
-        if (damage < 0)
+        if (!combat_enemy_turn(
+                combat,
+                player))
         {
-            damage = 0;
-        }
-
-        if (combat->player_defending)
-        {
-            damage /= 2;
-            combat->player_defending = 0;
-        }
-
-        combat->enemy_damage_dealt = damage;
-
-        player->hp -= damage;
-
-        if (player->hp <= 0)
-        {
-            player->hp = 0;
-
-            combat->active = 0;
-
-            combat->player_decision = 0;
-            combat->enemy_decision = 0;
-
             return;
         }
     }

@@ -2,16 +2,17 @@
 #define COMBAT_H
 
 #include "player.h"
-#include "loot.h"
+#include "enemy.h"
 
 typedef struct
 {
     int active;
 
+    const EnemyDefinition *enemy;
     int enemy_hp;
-    int enemy_max_hp;
 
     int player_defending;
+    int enemy_defending;
 
     int player_decision;
     int enemy_decision;
@@ -24,7 +25,11 @@ typedef struct
 
 } Combat;
 
-void combat_start(Combat *combat, Player *player);
+void combat_start(
+    Combat *combat,
+    Player *player,
+    const EnemyDefinition *enemy
+);
 
 void combat_render(
     const Combat *combat,
